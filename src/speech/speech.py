@@ -1,5 +1,8 @@
 import os
+import threading
 import time
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
 
@@ -10,6 +13,7 @@ from src.speech.voice_thread import Voice
 load_dotenv()
 
 WIT_AI_KEY = os.getenv('WIT_AI_KEY')
+HEROKU_CHANGE = os.getenv('HEROKU_CHANGE')
 
 r = sr.Recognizer()
 source = sr.Microphone()
@@ -42,6 +46,14 @@ def callback(recognizer, audio):
         print(f"No se ha podido reconocer la voz; {e}")
 
 
+def change_heroku_accounts():
+    exit_status = subprocess.call(HEROKU_CHANGE)
+    if exit_status == 0:
+        voice.say("Cuentas cambiadas")
+    else:
+        voice.say("Ha habido un problema al cambiar las cuentas")
+
+
 def voice_recognition(recognition_str: str = None):
     global wit
 
@@ -49,6 +61,7 @@ def voice_recognition(recognition_str: str = None):
         wit = True
     with source as mic:
         r.adjust_for_ambient_noise(mic)
+        r.pause_threshold = 0.5
 
     stop = r.listen_in_background(source, callback)
     print("Di algo")
@@ -75,6 +88,12 @@ def jarvis():
 
         if recognized.strip() != "" and "morado" in recognized.lower():
             voice.say("Cambiando las luces a morado")
+
+        elif recognized.strip() != "" and "cuenta" in recognized.lower():
+            voice.say("Cambiando las cuentas de Heroku")
+            thread = threading.Thread(target=change_heroku_accounts)
+            thread.start()
+
         elif recognized.strip() != "" and "salir" in recognized.lower():
             voice.say("Adiós, Rafa")
             return
