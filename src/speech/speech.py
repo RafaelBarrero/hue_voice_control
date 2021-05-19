@@ -2,12 +2,13 @@ import os
 import threading
 import time
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
+
 
 from dotenv import load_dotenv
 
 import speech_recognition as sr
 
+from src.hue.controller import PhillipsHue
 from src.speech.voice_thread import Voice
 
 load_dotenv()
@@ -22,6 +23,8 @@ wit = False
 salir = False
 
 voice = Voice()
+
+p = PhillipsHue()
 
 
 def callback(recognizer, audio):
@@ -86,19 +89,33 @@ def jarvis():
             recognized: str = r.recognize_google(audio, language="es-ES")
         print(f"He reconocido {recognized.strip()} en jarvis")
 
-        if recognized.strip() != "" and "morado" in recognized.lower():
-            voice.say("Cambiando las luces a morado")
+        if recognized.strip() != "":
+            if "salir" in recognized.lower():
+                voice.say("Adiós, Rafa")
+                return
 
-        elif recognized.strip() != "" and "cuenta" in recognized.lower():
-            voice.say("Cambiando las cuentas de Heroku")
-            thread = threading.Thread(target=change_heroku_accounts)
-            thread.start()
+            elif ("enciend" in recognized.lower() or "encender" in recognized.lower() or "enciendo"
+                  in recognized.lower()) and ("luces" in recognized.lower() or "luz" in recognized.lower()):
+                voice.say("Encendiendo las luces")
+                p.turn_lamps_on()
+            elif "apaga" in recognized.lower() and ("luces" in recognized.lower() or "luz" in recognized.lower()):
+                voice.say("Apagando las luces")
+                p.turn_lamps_off()
 
-        elif recognized.strip() != "" and "salir" in recognized.lower():
-            voice.say("Adiós, Rafa")
-            return
+            elif "morado" in recognized.lower():
+                voice.say("Cambiando las luces a morado")
+                p.change_scene("humilde morada")
 
-        # Calls the same function to start a loop if not "apagar"
+            elif "blanco" in recognized.lower():
+                voice.say("Cambiando las luces a blanco")
+                p.change_scene("energía")
+
+            elif "cuenta" in recognized.lower():
+                voice.say("Cambiando las cuentas de Heroku")
+                thread = threading.Thread(target=change_heroku_accounts)
+                thread.start()
+
+        # Calls the same function to start a loop if not "salir"
         jarvis()
     except (sr.UnknownValueError, sr.RequestError) as e:
         print(f"No se ha podido reconocer la voz; {e}")
